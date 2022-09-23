@@ -3,18 +3,19 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"os"
 	"runtime"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
+	"strings"
 )
 
 var filename = "./wallet.txt"
 
 func main() {
 	var f *os.File
+	CPUNum := runtime.NumCPU()
 	if checkFileIsExist(filename) { //如果文件存在
 		f, _ = os.OpenFile(filename, os.O_APPEND, 0666) //打开文件
 		fmt.Println("文件存在")
@@ -24,13 +25,12 @@ func main() {
 	}
 
 	fmt.Println("本程序会自动尝试生成尾号是8个重复字符的eth钱包地址，可能需要几天到几周的时间")
-	fmt.Println("cpu内核数量:", runtime.NumCPU())
+	fmt.Println("cpu内核数量:", CPUNum)
 	fmt.Println("你可以在多个电脑上运行本程序加快速度")
 	fmt.Println("开始生成……")
 
 	f.Close()
-
-	for i := 0; i < runtime.NumCPU()-1; i++ {
+	for i := 0; i < CPUNum-1; i++ {
 		go createWallet()
 	}
 	createWallet()
@@ -55,11 +55,8 @@ func createWallet() {
 		address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 		isGood := true
 		endstr := address[42-str_length : 42]
-		for i := 1; i < len(endstr); i++ {
-			if endstr[0] != endstr[i] {
-				isGood = false
-				break
-			}
+		if strings.Count(endstr, string(endstr[0])) != str_length {
+			isGood = false
 		}
 		if isGood {
 			fmt.Println(address)
