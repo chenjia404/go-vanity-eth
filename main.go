@@ -49,20 +49,23 @@ func main() {
 
 	// 最好要处理以下错误
 	if err != nil {
-		fmt.Println(err)
-	}
+		fmt.Println("config.json文件不存在，请查看该文件")
+	} else {
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+		var con config
 
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	var con config
-	json.Unmarshal([]byte(byteValue), &con)
-	jsonFile.Close()
-	threadNum := CPUNum - 1
-	wg.Add(1)
-	for i := 0; i < threadNum; i++ {
-		go createWallet(con.Continuous, con.DreamAddressSubstr)
+		err := json.Unmarshal([]byte(byteValue), &con)
+		if err != nil {
+			fmt.Println("config.json文件错误，请查看该文件")
+		}
+		jsonFile.Close()
+		threadNum := CPUNum - 1
+		wg.Add(1)
+		for i := 0; i < threadNum; i++ {
+			go createWallet(con.Continuous, con.DreamAddressSubstr)
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 }
 
 func createWallet(strLen int, strSubstr []string) {
