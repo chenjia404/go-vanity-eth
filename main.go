@@ -7,12 +7,14 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var filename = "./wallet.txt"
+var mutex sync.Mutex
 
 func main() {
 	var f *os.File
@@ -31,6 +33,7 @@ func main() {
 	fmt.Println("开始生成……")
 
 	f.Close()
+
 	threadNum := CPUNum - 1
 	for i := 0; i < threadNum; i++ {
 		go createWallet()
@@ -58,9 +61,10 @@ func createWallet() {
 		isGood := true
 		endstr := address[42-str_length : 42]
 		if strings.Count(endstr, string(endstr[0])) != str_length {
-			isGood = false
+			//isGood = false
 		}
 		if isGood {
+			mutex.Lock()
 			fmt.Println(address)
 			privateKeyBytes := crypto.FromECDSA(privateKey)
 			fmt.Println(hexutil.Encode(privateKeyBytes)[2:])
@@ -70,6 +74,7 @@ func createWallet() {
 			f.WriteString("\n")
 			f.WriteString("\n")
 			f.Sync()
+			mutex.Unlock()
 		}
 
 	}
