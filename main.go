@@ -38,7 +38,6 @@ func main() {
 	}
 
 	fmt.Println("本程序会自动尝试生成符合config.json要求的eth钱包地址，可能需要几天到几周的时间")
-	fmt.Println("config.json参数说明：continuous是连续的位数，比如8，意味着生成的地址中必须有不少于8个连续的相同字符，dreamAddressSubstr是要求生成地址中有相同的字符串")
 	fmt.Println("cpu内核数量:", CPUNum)
 	fmt.Println("你可以在多个电脑上运行本程序加快速度")
 	fmt.Println("开始生成……")
