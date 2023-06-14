@@ -58,7 +58,7 @@ func main() {
 			fmt.Println("config.json文件错误，请查看该文件")
 		}
 		jsonFile.Close()
-		threadNum := CPUNum - 1
+		threadNum := CPUNum - 2
 		wg.Add(1)
 		for i := 0; i < threadNum; i++ {
 			go createWallet(con.Continuous, con.DreamAddressSubstr)
@@ -89,12 +89,12 @@ func createWallet(strLen int, strSubstr []string) {
 		if strings.Count(endstr, string(endstr[0])) >= str_length {
 			isGood = true
 		}
-		for _, valueStr := range strSubstr {
-			if strings.Contains(address, valueStr) {
-				isGood = true
-				break
-			}
-		}
+		// for _, valueStr := range strSubstr {
+		// 	if strings.Contains(address, valueStr) {
+		// 		isGood = true
+		// 		break
+		// 	}
+		// }
 		if isGood {
 			mutex.Lock()
 			fmt.Println(address)
