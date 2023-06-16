@@ -89,12 +89,13 @@ func createWallet(strLen int, strSubstr []string) {
 		if strings.Count(endstr, string(endstr[0])) >= str_length {
 			isGood = true
 		}
-		// for _, valueStr := range strSubstr {
-		// 	if strings.Contains(address, valueStr) {
-		// 		isGood = true
-		// 		break
-		// 	}
-		// }
+
+		// 匹配开头
+		startStr := address[2 : 2+str_length]
+		if strings.Count(startStr, string(startStr[0])) >= str_length {
+			isGood = true
+		}
+
 		if isGood {
 			mutex.Lock()
 			fmt.Println(address)
