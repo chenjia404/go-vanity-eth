@@ -17,7 +17,6 @@ FROM alpine:3
 WORKDIR /app
 RUN apk update --no-cache && apk upgrade && apk add --no-cache ca-certificates
 
-COPY templates /app/templates
 COPY --from=builder /build/go-vanity-eth /app/go-vanity-eth
 
 
