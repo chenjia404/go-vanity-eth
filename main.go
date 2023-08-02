@@ -53,7 +53,7 @@ func main() {
 		byteValue, _ := ioutil.ReadAll(jsonFile)
 		var con config
 
-		err := json.Unmarshal([]byte(byteValue), &con)
+		err := json.Unmarshal(byteValue, &con)
 		if err != nil {
 			fmt.Println("config.json文件错误，请查看该文件")
 		}
