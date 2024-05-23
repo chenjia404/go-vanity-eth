@@ -4,7 +4,7 @@ go 1.21
 
 toolchain go1.22.2
 
-require github.com/ethereum/go-ethereum v1.14.0
+require github.com/ethereum/go-ethereum v1.14.3
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
