@@ -2,7 +2,7 @@ module github.com/chenjia404/go-vanity-eth
 
 go 1.24.0
 
-toolchain go1.25.6
+toolchain go1.25.7
 
 require github.com/ethereum/go-ethereum v1.16.5
 
