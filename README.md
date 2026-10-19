@@ -59,6 +59,8 @@ cuda/
 
 使用 PowerShell 7，默认 UTF-8。需要 Go（版本不低于 `go.mod` 的要求）；编译 CUDA 内核还需要 CUDA Toolkit 与 Visual Studio C++ 桌面开发工具。运行已编译程序仅需 NVIDIA 驱动与配套 PTX，无需安装 Toolkit。
 
+当前最低 Go 版本为 1.26.0，推荐工具链与 Docker 构建镜像使用 Go 1.27.2。主要依赖为 go-ethereum v1.17.8、golang.org/x/sys v0.49.0、secp256k1/v4 v4.4.1 和 uint256 v1.3.2。
+
 ```powershell
 # 同时编译 CUDA 内核和可直接运行的 Windows EXE
 ./scripts/build.ps1
