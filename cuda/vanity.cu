@@ -97,14 +97,28 @@ __device__ __forceinline__ F sub(F a, F b) {
     }
     return r;
 }
+__device__ F squareTimes(F a,int n) {
+    for(int i=0;i<n;++i) a=mul(a,a);
+    return a;
+}
 __device__ F inverse(F a) {
-    F r=one();
-    for (int i=255; i>=0; --i) {
-        r=mul(r,r);
-        U limb = i/32==0 ? 0xfffffc2dU : (i/32==1 ? 0xfffffffeU : 0xffffffffU);
-        if ((limb>>(i%32))&1) r=mul(r,a);
-    }
-    return r;
+    // 固定加法链计算 a^(p-2)：255 次平方与 15 次额外乘法。
+    // 各中间值为 a^(2^k-1)，最终指数为 2^256-2^32-979。
+    F v2=mul(mul(a,a),a);
+    F v3=mul(mul(v2,v2),a);
+    F r=mul(squareTimes(v3,3),v3);
+    r=mul(squareTimes(r,3),v3);
+    r=mul(squareTimes(r,2),v2);
+    F v22=mul(squareTimes(r,11),r);
+    F v44=mul(squareTimes(v22,22),v22);
+    F v88=mul(squareTimes(v44,44),v44);
+    r=mul(squareTimes(v88,88),v88);
+    r=mul(squareTimes(r,44),v44);
+    r=mul(squareTimes(r,3),v3);
+    r=mul(squareTimes(r,23),v22);
+    r=mul(squareTimes(r,5),a);
+    r=mul(squareTimes(r,3),v2);
+    return mul(squareTimes(r,2),a);
 }
 __device__ __forceinline__ F shuffle(F a, int lane) {
     F r;
@@ -179,10 +193,34 @@ __device__ bool matches(const unsigned char *addr,const Rules *rules) {
         int n=(addr[i/2]>>(i%2 ? 0 : 4))&15;
         text[i]=(unsigned char)(n<10 ? '0'+n : 'a'+n-10);
     }
+    // 先忽略大小写筛选；完全不可能命中的地址不再计算校验和。
+    // 纯数字条件可以直接命中，字母条件仍须经过完整 EIP-55 检查。
+    bool possible=false;
+    int n=rules->continuous;
+    if(n) {
+        bool first=true,last=true;
+        for(int i=1;i<n;++i) { first &= text[i]==text[0]; last &= text[40-n+i]==text[40-n]; }
+        if((first && (text[0]<='9' || n==1)) || (last && (text[40-n]<='9' || n==1))) return true;
+        possible=first || last;
+    }
+    for(int p=0;p<rules->count;++p) {
+        int len=rules->lengths[p];
+        for(int i=0;i<=40-len;++i) {
+            bool ok=true,digits=true;
+            for(int j=0;j<len;++j) {
+                unsigned char wanted=rules->patterns[p][j];
+                if(wanted>='A' && wanted<='F') wanted+=32;
+                if(text[i+j]!=wanted) { ok=false; break; }
+                digits &= wanted<='9';
+            }
+            if(ok && digits) return true;
+            possible |= ok;
+        }
+    }
+    if(!possible) return false;
     // 与 go-ethereum 的 EIP-55 大小写匹配规则保持一致。
     keccak(text,40,hash);
     for(int i=0;i<40;++i) if(text[i]>='a' && ((hash[i/2]>>(i%2 ? 0 : 4))&15)>=8) text[i]-=32;
-    int n=rules->continuous;
     if(n) {
         bool first=true,last=true;
         for(int i=1;i<n;++i) { first &= text[i]==text[0]; last &= text[40-n+i]==text[40-n]; }
@@ -226,5 +264,11 @@ extern "C" __global__ void search(Point *points,const Rules *rules,Hit *hits,U *
 // 实机测试入口：将显卡素域运算与 Go 大整数结果逐项比较。
 extern "C" __global__ void fieldtest(const F *a,const F *b,F *out,U n) {
     U i=blockIdx.x*blockDim.x+threadIdx.x;
-    if(i<n) { out[3*i]=add(a[i],b[i]); out[3*i+1]=sub(a[i],b[i]); out[3*i+2]=mul(a[i],b[i]); }
+    if(i<n) { out[4*i]=add(a[i],b[i]); out[4*i+1]=sub(a[i],b[i]); out[4*i+2]=mul(a[i],b[i]); out[4*i+3]=inverse(a[i]); }
+}
+
+// 独立测试匹配预筛选，覆盖人为构造的连续数字与字母地址。
+extern "C" __global__ void matchtest(const unsigned char *addresses,const Rules *rules,U *out,U n) {
+    U i=blockIdx.x*blockDim.x+threadIdx.x;
+    if(i<n) out[i]=matches(addresses+i*20,rules);
 }

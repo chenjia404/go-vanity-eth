@@ -88,7 +88,7 @@ func execute() error {
 	flag.StringVar(&o.ptx, "ptx", "cuda/vanity.ptx", "CUDA 内核文件")
 	flag.IntVar(&o.workers, "workers", maxInt(1, (runtime.NumCPU()-2)/4), "CPU 工作协程数")
 	flag.IntVar(&o.device, "device", 0, "CUDA 显卡编号")
-	flag.IntVar(&o.lanes, "lanes", 4096, "CUDA 搜索线程数，必须是 128 的倍数")
+	flag.IntVar(&o.lanes, "lanes", 65536, "CUDA 搜索线程数，必须是 128 的倍数")
 	flag.IntVar(&o.steps, "steps", 8, "CUDA 每批每线程尝试次数，范围 1 到 64")
 	flag.IntVar(&o.limit, "limit", 0, "生成指定数量后退出，0 表示持续搜索")
 	flag.DurationVar(&o.duration, "duration", 0, "运行时长，例如 30s；0 表示不限时")

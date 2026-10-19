@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -68,7 +69,7 @@ func TestCUDAFieldAgainstBigInt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	po, err := s.d.alloc(n * 96)
+	po, err := s.d.alloc(n * 128)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,15 +86,19 @@ func TestCUDAFieldAgainstBigInt(t *testing.T) {
 	if err = s.d.launch(f, n, pa, pb, po, n); err != nil {
 		t.Fatal(err)
 	}
-	out := make([]byte, n*96)
+	out := make([]byte, n*128)
 	if err = s.d.get(po, out); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < n; i++ {
-		wants := []*big.Int{new(big.Int).Add(a[i], b[i]), new(big.Int).Sub(a[i], b[i]), new(big.Int).Mul(a[i], b[i])}
+		inv := new(big.Int).ModInverse(a[i], p)
+		if inv == nil {
+			inv = new(big.Int)
+		}
+		wants := []*big.Int{new(big.Int).Add(a[i], b[i]), new(big.Int).Sub(a[i], b[i]), new(big.Int).Mul(a[i], b[i]), inv}
 		for j, want := range wants {
 			want.Mod(want, p)
-			got := decodeField(out[(i*3+j)*32:])
+			got := decodeField(out[(i*4+j)*32:])
 			if got.Cmp(want) != 0 {
 				t.Fatalf("素域运算不一致：向量 %d，运算 %d", i, j)
 			}
@@ -209,5 +214,85 @@ func TestCUDARejectsInfinity(t *testing.T) {
 	}
 	if _, err := s.batch(128, 1, true); err == nil {
 		t.Fatal("未拒绝无穷远点")
+	}
+}
+
+func TestCUDAMatchPrefilter(t *testing.T) {
+	s := cudaForTest(t)
+	const n = 1024
+	addresses := make([]common.Address, n)
+	data := make([]byte, n*20)
+	for i := range addresses {
+		if _, err := rand.Read(addresses[i][:]); err != nil {
+			t.Fatal(err)
+		}
+		// 强制制造常见的预筛选命中与大小写不一致的情况。
+		switch i % 8 {
+		case 0:
+			for j := 0; j < 5; j++ {
+				addresses[i][j] = 0xaa
+			}
+		case 1:
+			for j := 15; j < 20; j++ {
+				addresses[i][j] = 0xff
+			}
+		case 2:
+			for j := 0; j < 5; j++ {
+				addresses[i][j] = 0x88
+			}
+		case 3:
+			for j := 15; j < 20; j++ {
+				addresses[i][j] = 0
+			}
+		case 4:
+			addresses[i] = common.Address{}
+		case 5:
+			for j := range addresses[i] {
+				addresses[i][j] = 0xff
+			}
+		}
+		copy(data[i*20:], addresses[i][:])
+	}
+	input, err := s.d.alloc(len(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := s.d.alloc(n * 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.d.put(input, data); err != nil {
+		t.Fatal(err)
+	}
+	f, err := s.d.function("matchtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules := []config{
+		{Continuous: 1}, {Continuous: 2}, {Continuous: 10}, {Continuous: 40},
+		{DreamAddressSubstr: []string{"aa", "AA", "aA", "Aa"}},
+		{DreamAddressSubstr: []string{"aA"}},
+		{DreamAddressSubstr: []string{"8888888888", "0000000000"}},
+		{DreamAddressSubstr: []string{"fFfF", "FfFf", "abc", "ABC"}},
+		{DreamAddressSubstr: []string{addresses[5].Hex()[2:]}},
+		{Continuous: 10, DreamAddressSubstr: []string{"fF", "1234"}},
+	}
+	for _, c := range rules {
+		if err = s.setRules(c); err != nil {
+			t.Fatal(err)
+		}
+		if err = s.d.launch(f, n, input, s.rules, output, n); err != nil {
+			t.Fatal(err)
+		}
+		result := make([]byte, n*4)
+		if err = s.d.get(output, result); err != nil {
+			t.Fatal(err)
+		}
+		for i, addr := range addresses {
+			got := binary.LittleEndian.Uint32(result[i*4:]) != 0
+			if got != c.matches(addr) {
+				t.Fatalf("预筛选改变匹配结果：规则 %+v，地址 %s", c, addr.Hex())
+			}
+		}
 	}
 }
