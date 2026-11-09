@@ -6,7 +6,7 @@ toolchain go1.27.2
 
 require (
 	github.com/ethereum/go-ethereum v1.17.8
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 )
 
 require (
