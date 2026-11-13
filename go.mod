@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.27.2
 
 require (
-	github.com/ethereum/go-ethereum v1.17.8
+	github.com/ethereum/go-ethereum v1.17.10
 	golang.org/x/sys v0.49.0
 )
 
